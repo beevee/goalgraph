@@ -123,8 +123,10 @@ function render() {
   );
 
   const color = d3
-    .scaleSequential(d3.interpolateTurbo)
-    .domain([sumMin, sumMax]);
+    .scaleLinear()
+    .domain([0, 150, 200, sumMax])
+    .range(["#0b1d4a", "#f6d84c", "#3fb950", "#0b6e2b"])
+    .clamp(true);
 
   const ctx = canvas.node().getContext("2d", { alpha: false });
   const width = innerWidth;
@@ -175,6 +177,7 @@ function render() {
     .selectAll("path")
     .data(contours)
     .join("path")
+    .attr("class", (d) => (d.value === 200 ? "contour contour-200" : "contour"))
     .attr("d", contourPath);
 
   function topIntersections(contour) {
@@ -228,6 +231,28 @@ function render() {
     .attr("x", (d) => d.x + 20)
     .attr("y", 6)
     .text((d) => `${d.value}%`);
+
+  const label200 = contours
+    .map((contour) => {
+      if (contour.value !== 200) return null;
+      const hits = topIntersections(contour);
+      if (!hits.length) return null;
+      const x = d3.min(hits);
+      return { x, value: contour.value };
+    })
+    .filter(Boolean);
+
+  if (label200.length) {
+    g.append("g")
+      .attr("class", "contour-top-labels")
+      .selectAll("text")
+      .data(label200)
+      .join("text")
+      .attr("class", "contour-top-label")
+      .attr("x", (d) => d.x + 20)
+      .attr("y", 6)
+      .text((d) => `${d.value}%`);
+  }
 
   const guides = g.append("g").attr("class", "guides");
 
