@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>K(P) + K(R) Heatmap</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>K(P) + K(R) Heatmap</h1>
+        <p>R range: 5–12, П range: 13–23. Values are raw percentages.</p>
+      </header>
+
+      <section id="chart"></section>
+
+      <section class="notes">
+        <p id="range-note"></p>
+        <p class="legend-note">
+          Dashed guides mark breakpoints: П = 14.4, 18, 21.6 and R = 6.15, 8.2, 10.3.
+        </p>
+      </section>
+    </main>
+
+    <div id="tooltip" role="status" aria-live="polite"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,123 @@
+:root {
+  --bg: #0f172a;
+  --panel: #111827;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --accent: #38bdf8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  background: radial-gradient(circle at top, #1f2937 0%, #0b1220 55%, #05070c 100%);
+  color: var(--text);
+}
+
+main {
+  max-width: 1100px;
+  margin: 32px auto 64px;
+  padding: 0 24px;
+}
+
+header h1 {
+  font-size: 28px;
+  margin: 0 0 8px;
+}
+
+header p {
+  margin: 0 0 24px;
+  color: var(--muted);
+}
+
+#chart {
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.85), rgba(17, 24, 39, 0.9));
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  padding: 16px;
+  position: relative;
+}
+
+.plot {
+  position: relative;
+  margin: 0 auto;
+}
+
+.plot canvas,
+.plot svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.axis path,
+.axis line {
+  stroke: rgba(148, 163, 184, 0.5);
+}
+
+.axis text {
+  fill: var(--muted);
+  font-size: 12px;
+}
+
+.label {
+  fill: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.guides line {
+  stroke: rgba(56, 189, 248, 0.45);
+  stroke-dasharray: 4 6;
+}
+
+.contours path {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.6);
+  stroke-width: 0.6;
+}
+
+.contour-top-label {
+  fill: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  text-anchor: middle;
+  dominant-baseline: hanging;
+}
+
+
+#tooltip {
+  position: absolute;
+  pointer-events: none;
+  padding: 10px 12px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: translate(-50%, -120%);
+  transition: opacity 120ms ease;
+  z-index: 10;
+  min-width: 160px;
+}
+
+#tooltip strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.notes {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.legend-note {
+  margin-top: 6px;
+}
