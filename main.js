@@ -385,7 +385,7 @@ function render() {
             .range([0, legendWidth])
         )
         .ticks(5)
-        .tickFormat((d) => `${d}%`)
+        .tickFormat((d) => formatUnit(scaleToWeighted(d), 2))
     );
 
   const crosshairX = g
