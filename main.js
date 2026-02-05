@@ -6,6 +6,13 @@ const R_BREAKS = [6.15, 8.2, 10.3];
 
 const tooltip = d3.select("#tooltip");
 const rangeNote = d3.select("#range-note");
+const weightPInput = d3.select("#weight-p");
+const weightRInput = d3.select("#weight-r");
+const weightPValue = d3.select("#weight-p-value");
+const weightRValue = d3.select("#weight-r-value");
+
+const STORAGE_KEY_P = "goalgraph.weightP";
+const STORAGE_KEY_R = "goalgraph.weightR";
 
 function kP(p) {
   if (p < 14.4) return 0;
@@ -39,9 +46,37 @@ function formatPct(value, digits = 2) {
   return `${value.toFixed(digits)}%`;
 }
 
+function formatUnit(value, digits = 3) {
+  return value.toFixed(digits);
+}
+
+function readWeight(input, fallback) {
+  const value = Number.parseFloat(input.property("value"));
+  if (Number.isFinite(value)) return value;
+  return fallback;
+}
+
+function loadStoredWeights() {
+  const storedP = Number.parseFloat(localStorage.getItem(STORAGE_KEY_P));
+  const storedR = Number.parseFloat(localStorage.getItem(STORAGE_KEY_R));
+  if (Number.isFinite(storedP)) weightPInput.property("value", storedP);
+  if (Number.isFinite(storedR)) weightRInput.property("value", storedR);
+}
+
+function storeWeights(weightP, weightR) {
+  localStorage.setItem(STORAGE_KEY_P, weightP.toString());
+  localStorage.setItem(STORAGE_KEY_R, weightR.toString());
+}
+
 function render() {
   const container = d3.select("#chart");
   container.selectAll("*").remove();
+
+  const weightP = readWeight(weightPInput, 0.5);
+  const weightR = readWeight(weightRInput, 0.5);
+  storeWeights(weightP, weightR);
+  weightPValue.text(weightP.toFixed(2));
+  weightRValue.text(weightR.toFixed(2));
 
   const outerWidth = Math.min(1000, container.node().clientWidth || 900);
   const outerHeight = Math.round(outerWidth * 0.58);
@@ -113,18 +148,41 @@ function render() {
 
   const { min: minKp, max: maxKp } = extremes(P_RANGE, P_BREAKS, kP);
   const { min: minKr, max: maxKr } = extremes(R_RANGE, R_BREAKS, kR);
-  const sumMin = minKp + minKr;
-  const sumMax = maxKp + maxKr;
+  const sumRawMin = minKp + minKr;
+  const sumRawMax = maxKp + maxKr;
+
+  const sumWeightedMin = (minKp / 100) * weightP + (minKr / 100) * weightR;
+  const sumWeightedMax = (maxKp / 100) * weightP + (maxKr / 100) * weightR;
+  const sumWeightedSpan = sumWeightedMax - sumWeightedMin;
+
+  const scaleToRaw =
+    sumWeightedSpan === 0
+      ? () => sumRawMin
+      : d3
+          .scaleLinear()
+          .domain([sumWeightedMin, sumWeightedMax])
+          .range([sumRawMin, sumRawMax]);
+  const scaleToWeighted =
+    sumRawMax === sumRawMin
+      ? () => sumWeightedMin
+      : d3
+          .scaleLinear()
+          .domain([sumRawMin, sumRawMax])
+          .range([sumWeightedMin, sumWeightedMax]);
+
   rangeNote.text(
-    `Raw K_sum range in this view: ${formatPct(sumMin, 1)} to ${formatPct(
-      sumMax,
+    `Weighted K_sum range: ${formatUnit(sumWeightedMin)} to ${formatUnit(
+      sumWeightedMax
+    )}. Colors/contours scaled to ${formatPct(sumRawMin, 1)}–${formatPct(
+      sumRawMax,
       1
     )}.`
   );
 
+  const colorMax = Math.max(sumRawMax, 200);
   const color = d3
     .scaleLinear()
-    .domain([0, 150, 200, sumMax])
+    .domain([0, 150, 200, colorMax])
     .range(["#0b1d4a", "#f6d84c", "#3fb950", "#0b6e2b"])
     .clamp(true);
 
@@ -141,9 +199,11 @@ function render() {
     const r = R_RANGE[1] - (y / (height - 1)) * (R_RANGE[1] - R_RANGE[0]);
     for (let x = 0; x < width; x += 1) {
       const p = P_RANGE[0] + (x / (width - 1)) * (P_RANGE[1] - P_RANGE[0]);
-      const sum = kP(p) + kR(r);
-      values[idx] = sum;
-      const c = d3.rgb(color(sum));
+      const sumWeighted =
+        (kP(p) / 100) * weightP + (kR(r) / 100) * weightR;
+      const sumScaled = scaleToRaw(sumWeighted);
+      values[idx] = sumScaled;
+      const c = d3.rgb(color(sumScaled));
       const offset = idx * 4;
       data[offset] = c.r;
       data[offset + 1] = c.g;
@@ -157,9 +217,9 @@ function render() {
 
   const contourStep = 10;
   const contourStart =
-    Math.ceil((sumMin + Number.EPSILON) / contourStep) * contourStep;
+    Math.ceil((sumRawMin + Number.EPSILON) / contourStep) * contourStep;
   const contourStop =
-    Math.floor((sumMax - Number.EPSILON) / contourStep) * contourStep;
+    Math.floor((sumRawMax - Number.EPSILON) / contourStep) * contourStep;
   const contourLevels =
     contourStart <= contourStop
       ? d3.range(contourStart, contourStop + contourStep, contourStep)
@@ -230,7 +290,7 @@ function render() {
     .attr("class", "contour-top-label")
     .attr("x", (d) => d.x + 20)
     .attr("y", 6)
-    .text((d) => `${d.value}%`);
+    .text((d) => formatUnit(scaleToWeighted(d.value), 2));
 
   const label200 = contours
     .map((contour) => {
@@ -251,7 +311,7 @@ function render() {
       .attr("class", "contour-top-label")
       .attr("x", (d) => d.x + 20)
       .attr("y", 6)
-      .text((d) => `${d.value}%`);
+      .text((d) => formatUnit(scaleToWeighted(d.value), 2));
   }
 
   const guides = g.append("g").attr("class", "guides");
@@ -291,7 +351,7 @@ function render() {
   const legendStops = 10;
   for (let i = 0; i <= legendStops; i += 1) {
     const t = i / legendStops;
-    const value = sumMin + (sumMax - sumMin) * t;
+    const value = sumRawMin + (sumRawMax - sumRawMin) * t;
     gradient
       .append("stop")
       .attr("offset", `${t * 100}%`)
@@ -315,7 +375,14 @@ function render() {
     .call(
       d3
         .axisBottom(
-          d3.scaleLinear().domain([sumMin, sumMax]).range([0, legendWidth])
+          d3
+            .scaleLinear()
+            .domain(
+              sumRawMax === sumRawMin
+                ? [sumRawMin, sumRawMin + 1]
+                : [sumRawMin, sumRawMax]
+            )
+            .range([0, legendWidth])
         )
         .ticks(5)
         .tickFormat((d) => `${d}%`)
@@ -354,7 +421,7 @@ function render() {
       const r = yScale.invert(my);
       const kp = kP(p);
       const kr = kR(r);
-      const sum = kp + kr;
+      const sum = (kp / 100) * weightP + (kr / 100) * weightR;
 
       crosshairX
         .attr("x1", mx)
@@ -374,9 +441,9 @@ function render() {
         .style("opacity", 1)
         .html(
           `<strong>П ${formatPct(p, 2)}, R ${formatPct(r, 2)}</strong>` +
-            `K(П): ${formatPct(kp, 2)}<br/>` +
-            `K(R): ${formatPct(kr, 2)}<br/>` +
-            `K_sum: ${formatPct(sum, 2)}`
+            `K(П): ${formatPct(kp, 2)} × ${weightP.toFixed(2)}<br/>` +
+            `K(R): ${formatPct(kr, 2)} × ${weightR.toFixed(2)}<br/>` +
+            `K_sum: ${formatUnit(sum, 3)}`
         );
 
       const plotRect = plot.node().getBoundingClientRect();
@@ -397,5 +464,9 @@ function render() {
     });
 }
 
+weightPInput.on("input", render);
+weightRInput.on("input", render);
+
+loadStoredWeights();
 render();
 window.addEventListener("resize", render);
